@@ -7,9 +7,9 @@ from launch.actions import DeclareLaunchArgument, OpaqueFunction
 # scene_6 — custom_object_sorting.
 #
 # Launches the shared `example` YOLO detector (same node used by
-# waste_classification.launch.py) against one placeholder class, plus the
-# new custom_object_sorting behavior node. Swap `model_name` for a real
-# trained TensorRT engine at
+# waste_classification.launch.py) against the "strawberry shortcake ice
+# cream bar" class, plus the new custom_object_sorting behavior node. Swap
+# `model_name` for a real trained TensorRT engine at
 # src/example/example/yolo_detect/models/<model_name>.engine
 # (or models/v11/<model_name>.engine / models/26/<model_name>.engine if the
 # name contains "11"/"26", matching the existing model layout) before this
@@ -20,7 +20,7 @@ def launch_setup(context):
     camera_topic = LaunchConfiguration('camera_topic', default='/depth_cam/rgb/image_raw')
     camera_topic_arg = DeclareLaunchArgument('camera_topic', default_value=camera_topic)
 
-    model_name = LaunchConfiguration('model_name', default='custom_object').perform(context)
+    model_name = LaunchConfiguration('model_name', default='strawberry_shortcake_ice_cream_bar').perform(context)
     model_name_arg = DeclareLaunchArgument('model_name', default_value=model_name)
 
     conf = LaunchConfiguration('conf', default=0.6).perform(context)
@@ -39,7 +39,7 @@ def launch_setup(context):
         executable='yolo_node',
         output='screen',
         parameters=[{
-            'classes': ['custom_object'],
+            'classes': ['strawberry shortcake ice cream bar'],
             'model': model_name,
             'engine': model_name,
             'conf': conf,

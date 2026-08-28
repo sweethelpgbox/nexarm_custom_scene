@@ -2,9 +2,10 @@
 # coding: utf-8
 """custom_object_sorting — scene_6 detection + pick-and-place behavior.
 
-Detects a single new YOLO object class (placeholder name: ``custom_object``
-— swap in a real trained model, see ``src/example/example/yolo_detect/models/``)
-and moves every instance it sees to one fixed place target defined in
+Detects a single YOLO object class, "strawberry shortcake ice cream bar"
+(swap in a real trained model, see
+``src/example/example/yolo_detect/models/``) and moves every instance it
+sees to one fixed place target defined in
 ``src/app/config/plays/scene6_custom_object_sorting.yaml``.
 
 Modeled on the working scene_1/scene_3 pattern in ``app/waste_classification.py``:
@@ -37,7 +38,7 @@ from app import calibrated_pose, scene4_runtime, scene_play_registry
 from app.utils import pick_and_place
 
 SCENE_ID = 'scene_6'
-DETECT_CLASS = 'custom_object'
+DETECT_CLASS = 'strawberry shortcake ice cream bar'
 OBJECT_HEIGHT_M = 0.03
 PICK_PITCH_DEG = 80.0
 PICK_GRIPPER_ANGLE = 500

@@ -89,4 +89,4 @@ def test_scene6_custom_object_place_target_configured():
     play_config = Path(__file__).resolve().parents[1] / "config" / "plays" / "scene6_custom_object_sorting.yaml"
     cfg = scene_play_registry.load_play_config(scene_play_registry.SCENE6_ID, str(play_config))
 
-    assert cfg["place_targets"]["custom_object"] == [0.15, 0.15, 0.02]
+    assert cfg["place_targets"]["strawberry shortcake ice cream bar"] == [0.15, 0.15, 0.02]
