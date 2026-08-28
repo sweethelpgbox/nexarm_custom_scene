@@ -68,3 +68,25 @@ def test_scene1_waste_place_pose_configured():
     for target in ("residual_waste", "hazardous_waste", "recyclable_waste"):
         assert scene_play_registry.resolve_place_pitch(cfg, target, 80.0) == 80.0
         assert scene_play_registry.resolve_place_roll(cfg, target) == 0.0
+
+
+def test_scene6_launches_custom_object_sorting_node():
+    from app import scene_play_registry
+
+    entry = scene_play_registry.play_for_scene(scene_play_registry.SCENE6_ID)
+    launches = {(item["package"], item["launch"]) for item in entry["launches"]}
+
+    assert entry["play_id"] == "custom_object_sorting"
+    assert ("app", "custom_object_sorting.launch.py") in launches
+    assert entry["play_config_package"] == "app"
+    assert entry["play_config"] == "scene6_custom_object_sorting.yaml"
+    assert scene_play_registry.SCENE6_ID in scene_play_registry.PLAY_CONFIG_KEYS
+
+
+def test_scene6_custom_object_place_target_configured():
+    from app import scene_play_registry
+
+    play_config = Path(__file__).resolve().parents[1] / "config" / "plays" / "scene6_custom_object_sorting.yaml"
+    cfg = scene_play_registry.load_play_config(scene_play_registry.SCENE6_ID, str(play_config))
+
+    assert cfg["place_targets"]["custom_object"] == [0.15, 0.15, 0.02]

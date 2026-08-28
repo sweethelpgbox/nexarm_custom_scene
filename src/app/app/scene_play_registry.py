@@ -12,6 +12,7 @@ SCENE2_ID = "scene_2"
 SCENE3_ID = "scene_3"
 SCENE4_ID = "scene_4"
 SCENE5_ID = "scene_5"
+SCENE6_ID = "scene_6"
 
 APP_SCENE_CONFIG = "/home/ubuntu/ros2_ws/src/app/config/calibration_scene.yaml"
 STEPPER_SCENE_CONFIG = "/home/ubuntu/ros2_ws/src/example/example/stepper/config/calibration_scene.yaml"
@@ -87,6 +88,16 @@ SCENE_PLAY_REGISTRY = {
         "play_config_package": "example",
         "play_config": "scene5_dual_arm.yaml",
     },
+    SCENE6_ID: {
+        "play_id": "custom_object_sorting",
+        "package": "app",
+        "launch": "custom_object_sorting.launch.py",
+        "launches": [
+            {"package": "app", "launch": "custom_object_sorting.launch.py"},
+        ],
+        "play_config_package": "app",
+        "play_config": "scene6_custom_object_sorting.yaml",
+    },
 }
 
 PLAY_CONFIG_KEYS = {
@@ -106,6 +117,7 @@ PLAY_CONFIG_KEYS = {
         "kinematics",
     ),
     SCENE5_ID: ("place_policy", "place_targets", "scene5_grid", "scene5_dual_arm"),
+    SCENE6_ID: ("place_policy", "place_targets"),
 }
 
 
