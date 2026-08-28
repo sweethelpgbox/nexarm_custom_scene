@@ -1,0 +1,5 @@
+uint8 id
+uint8 p
+uint8 i
+uint8 d
+uint16 min_f

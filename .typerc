@@ -1,0 +1,47 @@
+serial_num=$(cat /sys/class/net/eth0/address | tr -d '\n' | tr -d ':')
+result=$(echo "$serial_num" | cut -c5-)
+HW_WIFI_AP_SSID="HW-${result}"
+
+
+# 当期版本
+export VERSION="|V2.1.2|2026-01-16|"
+
+
+# 当前摄像头类型
+export CAMERA_TYPE=aurora
+
+	# 机器类型：JETARM_STARTER/JETARM_ADVANCED
+export MACHINE_TYPE=NexArm
+
+	# 语言设置，主要涉及语音部分：Chinese/English
+export ASR_LANGUAGE=Chinese
+
+# 当前场景底盘类型: scene_4=Slide_Rails, scene_5=Conveyor_Belt, others=None  NexArm_Mecanum
+export CHASSIS_TYPE=None
+
+#麦克风类型, xf/wonderecho
+export MICROPHONE_TYPE=WonderEchoPro
+
+# 网络ip
+WIRED_IP=$(ifconfig wlan0 2>/dev/null | awk '/inet / {print $2; exit}')
+export ROS_DOMAIN_ID=78
+export CYCLONEDDS_URI=file:///etc/cyclonedds/config.xml
+export CALIBRATION_CURRENT_SCENE=scene_3
+export ASR_MODE=online
+echo -e "----------------------------------------------
+当前环境是ROS2|The current environment is ROS2
+----------------------------------------------"
+echo -e "CAMERA_TYPE:  \033[32m$CAMERA_TYPE\033[0m"
+echo -e "CHASSIS_TYPE:  \033[32m$CHASSIS_TYPE\033[0m"
+echo -e "MICROPHONE_TYPE:  \033[32m$MICROPHONE_TYPE\033[0m"
+echo -e "MACHINE: \033[32m$MACHINE_TYPE\033[0m"
+echo -e "HOST:    \033[32m$HOST\033[0m"
+echo -e "ROS_DOMAIN_ID: \033[32m$ROS_DOMAIN_ID\033[0m"
+echo -e "HW_WIFI_AP_SSID: \033[32m$HW_WIFI_AP_SSID\033[0m"
+echo -e "WIRED_IP:    \033[32m$WIRED_IP\033[0m"
+echo -e "ASR_LANGUAGE:    \033[32m$ASR_LANGUAGE\033[0m"
+echo -e "CALIBRATION_CURRENT_SCENE: \033[32m$CALIBRATION_CURRENT_SCENE\033[0m"
+if [ "$CALIBRATION_CURRENT_SCENE" = "scene_5" ]; then
+    echo -e "SCENE5_ARM_ROLE: \033[32m$SCENE5_ARM_ROLE\033[0m"
+fi
+echo -e "VERSION: \033[32m$VERSION\033[0m"

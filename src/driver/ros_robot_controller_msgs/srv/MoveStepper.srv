@@ -1,0 +1,5 @@
+int32 steps
+---
+bool success
+string message
+int32 current_position

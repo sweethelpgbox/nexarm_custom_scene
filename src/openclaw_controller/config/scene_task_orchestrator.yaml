@@ -1,0 +1,42 @@
+scene_task_orchestrator:
+  ros__parameters:
+    image_topic: /depth_cam/rgb/image_raw
+    workspace_roi: [0.08, 0.92, 0.08, 0.92]
+
+    inventory_colors: [red, green, blue, yellow, purple, orange]
+    round1_colors: [red, green, blue]
+    round2_colors: [green, yellow]
+    remaining_excluded_colors: []
+
+    left_box_color: orange
+    left_box_bbox: []
+
+    snapshot_dir: ~/.openclaw/scene_task_orchestrator/snapshots
+    memory_file: ~/.openclaw/scene_task_orchestrator/history.jsonl
+
+    image_max_age_sec: 2.0
+    scan_interval_sec: 1.0
+    scan_stable_frames: 3
+
+    detection_min_area_px: 700
+    detection_max_area_px: 120000
+    left_box_min_area_px: 4000
+    morph_kernel_size: 5
+
+    sort_timeout_sec: 120.0
+    transport_timeout_sec: 45.0
+    sort_verify_iou: 0.25
+    transport_verify_iou: 0.20
+    auto_exit_runtime: true
+
+    object_sorting_enter_service: /object_sorting/enter
+    object_sorting_exit_service: /object_sorting/exit
+    object_sorting_enable_service: /object_sorting/enable_sorting
+    object_sorting_target_service: /object_sorting/set_target
+
+    object_transport_enter_service: /object_transport/enter
+    object_transport_exit_service: /object_transport/exit
+    object_transport_enable_service: /object_transport/enable_transport
+    object_transport_pick_service: /object_transport/set_pick_position
+    object_transport_place_service: /object_transport/set_place_position
+    object_transport_finished_topic: /object_transport/transport_finished

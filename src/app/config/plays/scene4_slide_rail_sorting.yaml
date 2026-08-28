@@ -1,0 +1,237 @@
+play_id: slide_rail_sorting
+place_policy:
+  only_left_y_positive: false
+  min_place_z: 0.015
+place_targets:
+  red:
+  - 0.24
+  - 0.06
+  - 0.315
+  green:
+  - 0.255
+  - -0.12
+  - 0.08
+  yellow:
+  - 0.24
+  - 0.06
+  - 0.315
+  blue:
+  - 0.13
+  - -0.13
+  - 0.08
+  center:
+  - 0.235
+  - 0.0
+  - 0.015
+  left_top:
+  - 0.255
+  - 0.12
+  - 0.08
+  right_top:
+  - 0.255
+  - -0.12
+  - 0.08
+  left_bottom:
+  - 0.13
+  - 0.03
+  - 0.08
+  right_bottom:
+  - 0.13
+  - -0.13
+  - 0.08
+  tag1:
+  - -0.053
+  - 0.063
+  - 0.015
+  tag2:
+  - 0.017
+  - 0.063
+  - 0.015
+  tag3:
+  - 0.087
+  - 0.063
+  - 0.015
+  tag_stackup:
+  - 0.017
+  - 0.063
+  - 0.015
+rail:
+  enabled: true
+  total_steps: 4200
+  subdivision: 2
+  calibration_abs_position: 4000
+  place_abs_position: 700
+  reset_wait_sec: 18.0
+  speed_steps_per_sec: 1000.0
+scene4_pick:
+  active_zone: lower_board
+  lower_board:
+    view_pose:
+      x: 145.0
+      y: 0.0
+      z: 290.0
+      pitch: -90.0
+      roll: 0.0
+      claw: 0.0
+      time_ms: 2000
+    use_plane_calibration: true
+    detection:
+      min_v: 0
+      max_v: 1080
+scene4_place:
+  default_destination: upper_shelf
+  targets:
+    red: upper_shelf
+    green: frame
+    yellow: upper_shelf
+    blue: frame
+scene4_absolute_positions:
+  frame_slots:
+  - - 0.255
+    - 0.12
+    - 0.08
+  - - 0.255
+    - -0.12
+    - 0.08
+  - - 0.13
+    - 0.03
+    - 0.08
+  - - 0.13
+    - -0.13
+    - 0.08
+  upper_shelf_slots:
+  - - 0.24
+    - 0.06
+    - 0.315
+  - - 0.24
+    - 0.02
+    - 0.315
+  - - 0.24
+    - -0.02
+    - 0.315
+  - - 0.24
+    - -0.06
+    - 0.315
+  lower_shelf_slots:
+  - - 0.1
+    - 0.06
+    - 0.19
+  - - 0.1
+    - 0.02
+    - 0.19
+  - - 0.1
+    - -0.02
+    - 0.19
+  - - 0.1
+    - -0.06
+    - 0.19
+scene4_grid:
+  color_slots:
+  - yellow
+  - green
+  - red
+  - blue
+  color_slot_targets:
+  - - 0.24
+    - 0.06
+    - 0.315
+  - - 0.255
+    - -0.12
+    - 0.08
+  - - 0.24
+    - 0.06
+    - 0.315
+  - - 0.13
+    - -0.13
+    - 0.08
+  color_upper_slots:
+  - red
+  - yellow
+  - blue
+  - green
+  color_lower_slots:
+  - ''
+  - yellow
+  - green
+  - blue
+  all_slots:
+  - red
+  - green
+  - yellow
+  - blue
+  all_upper_slots:
+  - red
+  - ''
+  - ''
+  - green
+  all_lower_slots:
+  - yellow
+  - ''
+  - ''
+  - blue
+scene4_shelf:
+  length_m: 0.6
+  width_m: 0.263
+  level_match_tolerance_m: 0.06
+  rail_slots:
+    '4':
+      left: 3900
+      right: 1100
+      slot_1: 3900
+      slot_2: 2967
+      slot_3: 2033
+      slot_4: 1100
+    '8':
+      left: 7800
+      right: 2200
+      slot_1: 7800
+      slot_2: 5933
+      slot_3: 4067
+      slot_4: 2200
+  levels:
+    upper_shelf:
+      target_z_m: 0.315
+      pose:
+        x: 348.0
+        y: 0.0
+        z: 407.0
+        pitch: 0.0
+        roll: 0.0
+        claw: 0.0
+        time_ms: 2000
+      approach_pose:
+        x: 270.0
+        y: 0.0
+        z: 407.0
+        pitch: 0.0
+        roll: 0.0
+        claw: 0.0
+        time_ms: 2000
+    lower_shelf:
+      target_z_m: 0.19
+      pose:
+        x: 330.0
+        y: 0.0
+        z: 190.0
+        pitch: 0.0
+        roll: 0.0
+        claw: 0.0
+        time_ms: 2000
+  upper_z_m: 0.315
+  lower_z_m: 0.19
+  level_gap_m: 0.125
+kinematics:
+  params:
+  - 182.45
+  - 225.0
+  - 36.97
+  - 145.0
+  - 0.0
+  - 130.23
+  - 0.0
+  - 50.0
+  - 142.5
+  linkage1_mm: 110.45
+  linkage1_delta_mm: 72.0
+  base_high_mm: 70.5
+  base_high_delta_mm: 72.0

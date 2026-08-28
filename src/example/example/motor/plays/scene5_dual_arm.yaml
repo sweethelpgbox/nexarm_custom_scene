@@ -1,0 +1,249 @@
+play_id: dual_arm_conveyor
+place_policy:
+  only_left_y_positive: false
+  min_place_z: 0.015
+place_targets:
+  center:
+  - 0.235
+  - 0.0
+  - 0.015
+  left_top:
+  - 0.285
+  - 0.16
+  - 0.015
+  right_top:
+  - 0.285
+  - -0.16
+  - 0.015
+  left_bottom:
+  - 0.115
+  - 0.16
+  - 0.015
+  right_bottom:
+  - 0.115
+  - -0.16
+  - 0.015
+  red:
+  - 0.087
+  - 0.133
+  - 0.015
+  green:
+  - 0.017
+  - 0.133
+  - 0.015
+  blue:
+  - -0.053
+  - 0.133
+  - 0.015
+  tag1:
+  - -0.053
+  - 0.063
+  - 0.015
+  tag2:
+  - 0.017
+  - 0.063
+  - 0.015
+  tag3:
+  - 0.087
+  - 0.063
+  - 0.015
+  residual_waste:
+  - 0.095
+  - 0.214
+  - 0.02
+  food_waste:
+  - 0.04
+  - 0.214
+  - 0.02
+  hazardous_waste:
+  - -0.018
+  - 0.214
+  - 0.02
+  recyclable_waste:
+  - -0.07
+  - 0.214
+  - 0.02
+  tag_stackup:
+  - 0.017
+  - 0.063
+  - 0.015
+  yellow:
+  - 0.157
+  - 0.133
+  - 0.015
+scene5_grid:
+  color_slots:
+  - yellow
+  - red
+  - green
+  - blue
+  waste_slots:
+  - food_waste
+  - hazardous_waste
+  - recyclable_waste
+  - residual_waste
+scene5_dual_arm:
+  arm_a:
+    label: A机械臂
+    role: recognize_pick_and_fixed_place
+    namespace: /arm_a
+    controller_prefix: /arm_a/ros_robot_controller
+  arm_b:
+    label: B机械臂
+    role: recognize_pick_and_place
+    namespace: /arm_b
+    controller_prefix: /arm_b/ros_robot_controller
+  arm_a_vision:
+    color_object_height_m: 0.03
+    garbage_object_height_m: 0.04
+  conveyor:
+    owner: arm_b
+    topic: /arm_b/ros_robot_controller/conveyor/set
+    speed: -20
+    stop_speed: 0
+    move_ms: 1200
+    settle_ms: 500
+  arm_a_conveyor_follow:
+    enabled: true
+    axis: x
+    max_offset_mm: 80.0
+    min_axis_mm: -80.0
+    speed_profiles:
+      '-20':
+        mmps: 7.5
+        lead_ms: 300
+        release_ms: 450
+        tail_ms: 250
+      '-50':
+        mmps: 22.5
+        lead_ms: 300
+        release_ms: 450
+        tail_ms: 250
+      '-100':
+        mmps: 42.0
+        lead_ms: 300
+        release_ms: 450
+        tail_ms: 250
+  arm_b_fixed_pick:
+    enabled: true
+    x: 200.0
+    y: 15.0
+    z: 80.0
+    approach_z_offset: 10.0
+    lift_z_offset: 30.0
+    transfer_x: 200.0
+    transfer_y: 0.0
+    transfer_z: 200.0
+    pitch: -90.0
+    roll: 0.0
+    pre_grab_roll: 0.0
+    open_claw: -60.0
+    close_claw: -35.0
+    trigger_center_x: 320.0
+    trigger_center_y: 280.0
+    trigger_tolerance_x: 20.0
+    trigger_tolerance_y: 120.0
+  arm_a_points:
+    home:
+      x: 220.0
+      y: 0.0
+      z: 230.0
+      pitch: -90.0
+      roll: 0.0
+      claw: -75.0
+      time_ms: 1000
+    pick:
+      x: 180.0
+      y: 120.0
+      z: 65.0
+      pitch: -90.0
+      roll: 0.0
+      claw: -75.0
+      time_ms: 1000
+    pick_close:
+      x: 180.0
+      y: 120.0
+      z: 65.0
+      pitch: -90.0
+      roll: 0.0
+      claw: -28.0
+      time_ms: 600
+    pick_lift:
+      x: 180.0
+      y: 120.0
+      z: 160.0
+      pitch: -90.0
+      roll: 0.0
+      claw: -28.0
+      time_ms: 900
+    place_approach:
+      x: 0.0
+      y: 230.0
+      z: 200.0
+      pitch: -90.0
+      roll: 0.0
+      claw: -28.0
+      time_ms: 1000
+    place:
+      x: 0.0
+      y: 210.0
+      z: 100.0
+      pitch: -90.0
+      roll: 0.0
+      claw: -28.0
+      time_ms: 900
+    put_on_conveyor:
+      x: 180.0
+      y: -80.0
+      z: 80.0
+      pitch: -90.0
+      roll: 0.0
+      claw: -28.0
+      time_ms: 1200
+    release:
+      x: 0.0
+      y: 210.0
+      z: 100.0
+      pitch: -90.0
+      roll: 0.0
+      claw: -75.0
+      time_ms: 600
+    release_lift:
+      x: 0.0
+      y: 210.0
+      z: 200.0
+      pitch: -90.0
+      roll: 0.0
+      claw: -75.0
+      time_ms: 800
+  arm_b_place_targets:
+    color:
+      red:
+      - -60.0
+      - -230.0
+      green:
+      - 60.0
+      - -230.0
+      blue:
+      - 60.0
+      - -130.0
+      yellow:
+      - -60.0
+      - -130.0
+    waste:
+      food_waste:
+      - -0.05
+      - -0.36
+      - 0.27
+      hazardous_waste:
+      - -0.05
+      - -0.46
+      - 0.27
+      recyclable_waste:
+      - 0.06
+      - -0.36
+      - 0.27
+      residual_waste:
+      - 0.06
+      - -0.46
+      - 0.27

@@ -1,0 +1,73 @@
+play_id: idle
+place_policy:
+  min_place_z: 0.015
+  only_left_y_positive: false
+place_targets:
+  blue:
+  - 0.07
+  - 0.13
+  - 0.025
+  center:
+  - 0.235
+  - 0.0
+  - 0.015
+  food_waste:
+  - 0.02
+  - -0.14
+  - 0.045
+  green:
+  - 0.02
+  - 0.13
+  - 0.025
+  hazardous_waste:
+  - -0.03
+  - -0.14
+  - 0.045
+  left_bottom:
+  - 0.115
+  - 0.16
+  - 0.015
+  left_top:
+  - 0.285
+  - 0.16
+  - 0.015
+  recyclable_waste:
+  - 0.07
+  - -0.14
+  - 0.045
+  red:
+  - -0.03
+  - 0.13
+  - 0.025
+  residual_waste:
+  - 0.13
+  - -0.14
+  - 0.045
+  right_bottom:
+  - 0.115
+  - -0.16
+  - 0.015
+  right_top:
+  - 0.285
+  - -0.16
+  - 0.015
+  tag1:
+  - 0.14
+  - -0.14
+  - 0.025
+  tag2:
+  - 0.07
+  - -0.14
+  - 0.025
+  tag3:
+  - 0.07
+  - -0.14
+  - 0.025
+  yellow:
+  - 0.14
+  - 0.13
+  - 0.025
+  tag_stackup:
+  - 0.0
+  - 0.13
+  - 0.025

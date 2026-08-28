@@ -1,0 +1,156 @@
+current_scene: scene_4
+scenes:
+  scene_1:
+    name: 基础分拣沙盘
+    length_m: 0.158
+    width_m: 0.175
+    home_pose:
+      x: 120.0
+      y: 0.0
+      z: 210.0
+      pitch: -90.0
+      roll: 0.0
+      claw: 0.0
+    play_id: basic_sorting
+  scene_4:
+    name: 电动滑轨货仓沙盘
+    length_m: 0.263
+    width_m: 0.263
+    use_calibration_scene: scene_4
+    calibration_tag:
+      center_in_map_m:
+        x: -0.1115
+        y: 0.1115
+        z: 0.0
+      effective_size_m: 0.033
+      id: 1
+      size_m: 0.04
+      yaw_deg: 0.0
+    home_pose:
+      x: 145.0
+      y: 0.0
+      z: 290.0
+      pitch: -90.0
+      roll: 0.0
+      claw: 0.0
+    calibration_pose:
+      x: 145.0
+      y: 0.0
+      z: 290.0
+      pitch: -90.0
+      roll: 0.0
+      claw: 0.0
+      time_ms: 2000
+    play_id: slide_rail_sorting
+  scene_0:
+    calibration_tag:
+      center_in_map_m:
+        x: -0.045
+        y: 0.0635
+        z: 0.0
+      effective_size_m: 0.033
+      id: 1
+      size_m: 0.04
+      yaw_deg: 0.0
+    home_pose:
+      x: 200.0
+      y: 0.0
+      z: 200.0
+      pitch: -90.0
+      roll: 0.0
+      claw: 0.0
+      time_ms: 2000
+    kinematics:
+      params:
+      - 110.45
+      - 225.0
+      - 36.97
+      - 145.0
+      - 0.0
+      - 130.23
+      - 0.0
+      - 50.0
+      - 70.5
+    length_m: 0.13
+    mode: arm_body
+    name: 无沙盘场景
+    width_m: 0.167
+    play_id: idle
+  scene_2:
+    calibration_tag:
+      center_in_map_m:
+        x: -0.065
+        y: 0.064
+        z: 0.0
+      effective_size_m: 0.033
+      id: 1
+      size_m: 0.04
+    home_pose:
+      x: 120.0
+      y: 0.0
+      z: 210.0
+      pitch: -90.0
+      roll: 0.0
+      claw: 0.0
+    length_m: 0.158
+    name: 标准分拣沙盘
+    use_calibration_scene: scene_1
+    width_m: 0.175
+    play_id: color_tag_sorting
+  scene_3:
+    calibration_tag:
+      center_in_map_m:
+        x: -0.1115
+        y: 0.1115
+        z: 0.0
+      effective_size_m: 0.033
+      id: 1
+      size_m: 0.04
+    home_pose:
+      x: 210.0
+      y: 0.0
+      z: 235.0
+      pitch: -90.0
+      roll: 0.0
+      claw: 0.0
+    length_m: 0.263
+    name: 豪华分拣沙盘
+    use_calibration_scene: scene_1
+    width_m: 0.263
+    play_id: waste_classification
+  scene_5:
+    calibration_pose:
+      x: 220.0
+      y: 0.0
+      z: 230.0
+      pitch: -90.0
+      roll: 0.0
+      claw: 0.0
+      time_ms: 1000
+    calibration_tag:
+      center_in_map_m:
+        x: -0.1115
+        y: 0.1115
+        z: 0.0
+      effective_size_m: 0.033
+      id: 1
+      size_m: 0.04
+      yaw_deg: 0.0
+    home_pose:
+      x: 220.0
+      y: 0.0
+      z: 230.0
+      pitch: -90.0
+      roll: 0.0
+      claw: 0.0
+      time_ms: 1000
+    length_m: 0.263
+    mode: dual_arm_single_conveyor
+    name: 双臂流水线沙盘
+    use_calibration_scene: scene_4
+    width_m: 0.263
+    play_id: dual_arm_conveyor
+global_place_offset:
+  x: 0.0
+  y: 0.0
+  z: 0.0

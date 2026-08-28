@@ -1,0 +1,63 @@
+/**:
+  ros__parameters:
+    joint1:
+      id: 1
+      init: 2048
+      min: 0
+      max: 4096
+      ticks_per_rad: 626.8
+
+    joint2:
+      id: 2
+      init: 2048
+      min: 4096
+      max: 0
+      ticks_per_rad: 591.5
+
+    joint3:
+      id: 3
+      init: 1198
+      min: 4096
+      max: 0
+      ticks_per_rad: 624.6
+
+    joint4:
+      id: 4
+      init: 1238
+      min: 0
+      max: 4096
+      ticks_per_rad: 586.9
+
+    joint5:
+      id: 5
+      init: 2048
+      min: 0
+      max: 4096
+
+    gripper_base_joint:
+      id: 6
+      init: 1000
+      min: 0
+      max: 4096
+      ticks_per_rad: 3200.0
+
+
+    arm_controller:
+      joint_trajectory_action_node:
+        min_velocity: 0.1
+        constraints:
+          goal_time: 0.05
+      joint_controllers:
+        - "joint1"
+        - "joint2"
+        - "joint3"
+        - "joint4"
+        - "joint5"
+
+    gripper_controller:
+      joint_trajectory_action_node:
+        min_velocity: 0.1
+        constraints:
+          goal_time: 0.05
+      joint_controllers:
+        - "gripper_base_joint"

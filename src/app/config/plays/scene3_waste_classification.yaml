@@ -1,0 +1,119 @@
+play_id: waste_classification
+place_policy:
+  only_left_y_positive: false
+  min_place_z: 0.015
+place_targets:
+  yellow:
+  - 0.29
+  - 0.22
+  - 0.08
+  red:
+  - 0.28
+  - -0.25
+  - 0.08
+  green:
+  - 0.18
+  - 0.22
+  - 0.08
+  blue:
+  - 0.16
+  - -0.25
+  - 0.08
+  residual_waste:
+  - -0.05
+  - -0.26
+  - 0.19
+  food_waste:
+  - 0.29
+  - -0.25
+  - 0.18
+  hazardous_waste:
+  - 0.05
+  - -0.26
+  - 0.19
+  recyclable_waste:
+  - 0.165
+  - -0.251
+  - 0.182
+  center:
+  - 0.235
+  - 0.0
+  - 0.015
+  left_top:
+  - 0.285
+  - 0.16
+  - 0.015
+  right_top:
+  - 0.285
+  - -0.16
+  - 0.015
+  left_bottom:
+  - 0.115
+  - 0.16
+  - 0.015
+  right_bottom:
+  - 0.115
+  - -0.16
+  - 0.015
+  tag1:
+  - -0.053
+  - 0.063
+  - 0.015
+  tag2:
+  - 0.017
+  - 0.063
+  - 0.015
+  tag3:
+  - 0.087
+  - 0.063
+  - 0.015
+  tag_stackup:
+  - 0.017
+  - 0.063
+  - 0.015
+place_pitch:
+  yellow: -65.0
+  red: -65.0
+  green: -65.0
+  blue: -65.0
+  residual_waste: -45.0
+  food_waste: -43.0
+  hazardous_waste: -45.0
+  recyclable_waste: -43.0
+scene3_grid:
+  color_slots:
+  - green
+  - blue
+  - red
+  - yellow
+  color_slot_targets:
+  - - 0.18
+    - 0.22
+    - 0.08
+  - - 0.16
+    - -0.25
+    - 0.08
+  - - 0.28
+    - -0.25
+    - 0.08
+  - - 0.29
+    - 0.22
+    - 0.08
+  waste_slots:
+  - food_waste
+  - recyclable_waste
+  - hazardous_waste
+  - residual_waste
+  waste_slot_targets:
+  - - 0.29
+    - -0.25
+    - 0.18
+  - - 0.165
+    - -0.251
+    - 0.182
+  - - 0.05
+    - -0.26
+    - 0.19
+  - - -0.05
+    - -0.26
+    - 0.19

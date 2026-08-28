@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+build/
+dist/
+install/
+log/
+.vscode/
+*.swp
+*.swo
+crash_log.txt
+offset_config.json
+temp_wifi.xml

@@ -1,0 +1,4 @@
+---
+bool success
+string esp_version
+string at32_version

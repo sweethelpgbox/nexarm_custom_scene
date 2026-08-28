@@ -1,0 +1,4 @@
+---
+bool success
+uint8[] ap_counts
+int8[] rssi_values

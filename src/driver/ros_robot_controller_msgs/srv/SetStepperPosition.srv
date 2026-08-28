@@ -1,0 +1,12 @@
+int32 position
+bool absolute
+bool reset_first
+bool set_subdivision
+uint8 subdivision
+bool wait_for_motion
+float32 reset_wait_sec
+float32 speed_steps_per_sec
+---
+bool success
+string message
+int32 current_position
