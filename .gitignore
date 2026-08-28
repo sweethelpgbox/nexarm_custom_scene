@@ -1,2 +1,29 @@
 *.caffemodel
 *.pt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.eggs/
+
+# colcon / ROS 2 build artifacts
+build/
+install/
+log/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Editor/OS cruft
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
