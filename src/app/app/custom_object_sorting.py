@@ -17,6 +17,15 @@ waste_classification's always-on ``yolo`` instance. Reuses the shared
 pick()/place() motion helpers in ``app.utils.pick_and_place``. Trimmed to
 a single class and a single destination, so it skips the multi-target
 coordinator/heartbeat machinery the bigger multi-class nodes need.
+
+Pick height: measured live per-detection from the registered depth point
+cloud (``_sample_real_height``), not a fixed guess. See that method's
+docstring for the math and its safety fallback to ``OBJECT_HEIGHT_M`` --
+CONFIRMED ON HARDWARE ONLY UP TO the classification/pick/place pipeline
+working with a fixed height; the live-depth path below has not itself
+been validated against real hardware and its first live runs should be
+watched closely (logged heights compared to the object's actual height)
+before being trusted.
 """
 
 import os
@@ -30,13 +39,20 @@ from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import ReentrantCallbackGroup
 from std_srvs.srv import Trigger
-from sensor_msgs.msg import CameraInfo
+from sensor_msgs.msg import CameraInfo, PointCloud2
 from interfaces.msg import ObjectsInfo
 from ros_robot_controller_msgs.msg import ArmCoords
 
 from sdk import common
 from app import calibrated_pose, scene4_runtime, scene_play_registry
 from app.utils import pick_and_place
+
+try:
+    import sensor_msgs_py.point_cloud2 as pc2
+    HAS_POINT_CLOUD2 = True
+except ImportError:
+    pc2 = None
+    HAS_POINT_CLOUD2 = False
 
 SCENE_ID = 'scene_6'
 DETECT_CLASS = 'strawberry shortcake ice cream bar'
@@ -45,7 +61,20 @@ DETECT_CLASS = 'strawberry shortcake ice cream bar'
 # node name 'yolo' and services '/yolo/start'|'/yolo/stop', which collide
 # with waste_classification.launch.py's always-on yolo_node instance.
 DETECT_NODE_NAME = 'strawberry_shortcake_detect'
+DEPTH_CLOUD_TOPIC = 'depth_cam/depth_registered/points'
+# Fallback used when live depth sampling is unavailable or looks invalid.
 OBJECT_HEIGHT_M = 0.03
+# Sanity bounds on the live-measured height -- protects against a bad
+# depth reading (noise, a hole in the depth image, a units mistake)
+# commanding a wildly wrong -- and potentially unsafe -- arm position.
+# Widen only after confirming real measured heights land inside this
+# range in the logs.
+MIN_SAFE_HEIGHT_M = 0.0
+MAX_SAFE_HEIGHT_M = 0.08
+# Half-width (in pixels) of the window sampled around the detection's
+# center pixel; the median of valid points in this window is used, to be
+# robust to individual noisy/missing depth pixels.
+DEPTH_SAMPLE_WINDOW = 2
 PICK_PITCH_DEG = 80.0
 PICK_GRIPPER_ANGLE = 500
 PICK_GRIPPER_DEPTH_M = 0.02
@@ -70,8 +99,21 @@ class CustomObjectSortingNode(Node):
 
         self.intrinsic = None
         self.distortion = None
-        self.extristric = None
+        # Raw (unshifted) extrinsic tvec/rmat from calibration -- the
+        # per-detection code shifts this dynamically using the live
+        # measured object height (see _shifted_extristric), rather than
+        # baking in a single fixed-height shift once at entry time.
+        self.raw_tvec = None
+        self.raw_rmat = None
         self.white_area_center = None
+        self.calibration_ready = False
+
+        self.depth_cloud = None
+        self.depth_cloud_lock = threading.Lock()
+        if not HAS_POINT_CLOUD2:
+            self.get_logger().warn(
+                'sensor_msgs_py.point_cloud2 not importable -- live depth '
+                'sampling disabled, will always fall back to OBJECT_HEIGHT_M')
 
         self.place_target = self._load_place_target()
 
@@ -90,6 +132,7 @@ class CustomObjectSortingNode(Node):
 
         self.camera_info_sub = None
         self.object_sub = None
+        self.depth_cloud_sub = None
 
         self.timer = self.create_timer(0.0, self.init_process, callback_group=self.timer_cb_group)
 
@@ -153,6 +196,9 @@ class CustomObjectSortingNode(Node):
                 CameraInfo, 'depth_cam/rgb/camera_info', self.camera_info_callback, 1)
             self.object_sub = self.create_subscription(
                 ObjectsInfo, f'/{DETECT_NODE_NAME}/object_detect', self.object_callback, 1)
+            if HAS_POINT_CLOUD2:
+                self.depth_cloud_sub = self.create_subscription(
+                    PointCloud2, DEPTH_CLOUD_TOPIC, self.depth_cloud_callback, 1)
             self.enter = True
             threading.Thread(target=self.get_roi, daemon=True).start()
         self.send_request(self.start_yolo_client, Trigger.Request())
@@ -168,6 +214,9 @@ class CustomObjectSortingNode(Node):
         if self.camera_info_sub is not None:
             self.destroy_subscription(self.camera_info_sub)
             self.camera_info_sub = None
+        if self.depth_cloud_sub is not None:
+            self.destroy_subscription(self.depth_cloud_sub)
+            self.depth_cloud_sub = None
         self.enter = False
         response.success = True
         response.message = 'exited scene_6'
@@ -178,6 +227,10 @@ class CustomObjectSortingNode(Node):
     def camera_info_callback(self, msg):
         self.intrinsic = np.matrix(msg.k).reshape(1, -1, 3)
         self.distortion = np.array(msg.d)
+
+    def depth_cloud_callback(self, msg):
+        with self.depth_cloud_lock:
+            self.depth_cloud = msg
 
     def get_roi(self):
         config = common.get_yaml_data(os.path.join(self.config_path, self.config_file)) or {}
@@ -191,15 +244,86 @@ class CustomObjectSortingNode(Node):
         self.white_area_center = white_area_center
         while self.intrinsic is None or self.distortion is None:
             time.sleep(0.1)
-        tvec = extristric[:1]
-        rmat = extristric[1:]
-        tvec, rmat = common.extristric_plane_shift(np.array(tvec).reshape((3, 1)), np.array(rmat), OBJECT_HEIGHT_M)
-        self.extristric = (tvec, rmat)
+        self.raw_tvec = np.array(extristric[:1]).reshape((3, 1))
+        self.raw_rmat = np.array(extristric[1:])
+        self.calibration_ready = True
 
-    def get_object_world_position(self, pixel, height=OBJECT_HEIGHT_M):
+    def _shifted_extristric(self, height):
+        """Same trick get_roi() used to do once with a fixed height --
+        shift the calibrated plane's tvec by `height` along its own Z
+        axis (see sdk.common.extristric_plane_shift) so pixel_to_world's
+        plane-intersection math targets a plane `height` above the
+        calibrated table, rather than the table itself. Done fresh per
+        detection now, using whatever height _sample_real_height (or the
+        OBJECT_HEIGHT_M fallback) provides for that specific object."""
+        return common.extristric_plane_shift(self.raw_tvec, self.raw_rmat, height)
+
+    def _sample_real_height(self, pixel_center):
+        """Best-effort real object height above the calibrated table
+        plane, measured from the registered depth point cloud rather than
+        assumed. Returns None (caller falls back to OBJECT_HEIGHT_M) if
+        depth data is unavailable, the cloud isn't organized, no valid
+        (non-NaN) points are found near the pixel, or the computed height
+        falls outside [MIN_SAFE_HEIGHT_M, MAX_SAFE_HEIGHT_M].
+
+        Math: back-project the sampled camera-frame 3D point through the
+        *raw* (unshifted) calibration extrinsic the same way
+        sdk.common.pixels_to_world back-projects a pixel ray, except
+        using the point's real measured depth instead of solving for an
+        assumed plane intersection -- world_point = invR @ (cam_point -
+        tvec); world_point's Z component is the real height above the
+        calibrated table.
+
+        This has not been validated against real hardware -- the logged
+        cam_point/height on each pick should be sanity-checked against
+        the object's real height before trusting it.
+        """
+        if not HAS_POINT_CLOUD2 or not self.calibration_ready:
+            return None
+        with self.depth_cloud_lock:
+            cloud = self.depth_cloud
+        if cloud is None or cloud.height <= 1:
+            return None
+        try:
+            u = max(0, min(cloud.width - 1, int(round(pixel_center[0]))))
+            v = max(0, min(cloud.height - 1, int(round(pixel_center[1]))))
+            uvs = [
+                (uu, vv)
+                for dv in range(-DEPTH_SAMPLE_WINDOW, DEPTH_SAMPLE_WINDOW + 1)
+                for du in range(-DEPTH_SAMPLE_WINDOW, DEPTH_SAMPLE_WINDOW + 1)
+                for uu, vv in [(u + du, v + dv)]
+                if 0 <= uu < cloud.width and 0 <= vv < cloud.height
+            ]
+            points = list(pc2.read_points(cloud, field_names=('x', 'y', 'z'), skip_nans=True, uvs=uvs))
+            if not points:
+                return None
+            cam_points = np.array([[p[0], p[1], p[2]] for p in points], dtype=np.float64)
+            cam_point = np.median(cam_points, axis=0).reshape(3, 1)
+
+            invR = np.linalg.inv(self.raw_rmat)
+            world_point = invR @ (cam_point - self.raw_tvec)
+            real_height = float(world_point[2][0])
+
+            self.get_logger().info(
+                f'depth sample at ({u},{v}) from {len(points)} pts: '
+                f'cam_point={cam_point.reshape(-1).round(4).tolist()}, '
+                f'computed height={real_height:.4f} m')
+
+            if not (MIN_SAFE_HEIGHT_M <= real_height <= MAX_SAFE_HEIGHT_M):
+                self.get_logger().warn(
+                    f'computed height {real_height:.4f} m outside safe range '
+                    f'[{MIN_SAFE_HEIGHT_M}, {MAX_SAFE_HEIGHT_M}] -- falling back '
+                    f'to OBJECT_HEIGHT_M={OBJECT_HEIGHT_M}')
+                return None
+            return real_height
+        except Exception as e:
+            self.get_logger().warn(f'depth sampling failed, falling back to OBJECT_HEIGHT_M: {e}')
+            return None
+
+    def get_object_world_position(self, pixel, extristric, height):
         calibration = calibrated_pose.load_axis_calibration(self.config_path, self.calibration_file)
         return calibrated_pose.pixel_to_calibrated_world(
-            pixel, self.intrinsic, self.extristric, self.white_area_center, calibration, height=height)
+            pixel, self.intrinsic, extristric, self.white_area_center, calibration, height=height)
 
     @staticmethod
     def _position_yaw(position):
@@ -213,7 +337,7 @@ class CustomObjectSortingNode(Node):
     # -- detection -> pick/place -----------------------------------------------------
 
     def object_callback(self, msg):
-        if self.busy or self.extristric is None:
+        if self.busy or not self.calibration_ready:
             return
         best = None
         for obj in msg.objects:
@@ -234,11 +358,21 @@ class CustomObjectSortingNode(Node):
     def _pick_and_place(self, pixel_center):
         try:
             self.send_request(self.stop_yolo_client, Trigger.Request())
-            position, _ = self.get_object_world_position(pixel_center)
+
+            real_height = self._sample_real_height(pixel_center)
+            height = real_height if real_height is not None else OBJECT_HEIGHT_M
+            extristric = self._shifted_extristric(height)
+
+            position, _ = self.get_object_world_position(pixel_center, extristric, height)
             position = np.asarray(position, dtype=np.float64).tolist()
             calibration = common.get_yaml_data(os.path.join(self.config_path, self.calibration_file)) or {}
             position = calibrated_pose.apply_axis_calibration(position, calibration, 'kinematics').tolist()
             yaw = self._position_yaw(position)
+
+            self.get_logger().info(
+                f'picking {DETECT_CLASS}: height={height:.4f} m '
+                f'({"measured" if real_height is not None else "OBJECT_HEIGHT_M fallback"}), '
+                f'position={position}')
 
             picked = pick_and_place.pick(
                 position, PICK_PITCH_DEG, yaw, PICK_GRIPPER_ANGLE, PICK_GRIPPER_DEPTH_M, self.arm_pub)
