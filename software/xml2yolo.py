@@ -25,12 +25,24 @@ def split(full_list, shuffle=False):
     sublist_3 = full_list[offset2:]
     return sublist_1, sublist_2, sublist_3
 
+IMAGE_EXTS = ('.jpg', '.jpeg', '.png', '.bmp')
+
+def build_image_index(jpg_path):
+    # 按去掉扩展名的文件名索引图片，兼容大小写混用的扩展名(.jpg/.JPG/.jpeg/...)
+    index = {}
+    for name in os.listdir(jpg_path):
+        stem, ext = os.path.splitext(name)
+        if ext.lower() in IMAGE_EXTS:
+            index.setdefault(stem, os.path.join(jpg_path, name))
+    return index
+
 def generate_train_and_val():
     file_list = []
+    image_index = build_image_index(JPG_PATH)
     for xml_file in glob.glob(str(os.path.join(XML_PATH,'*.xml'))):
-        base_name = os.path.basename(xml_file)
-        jpg_file = os.path.join(JPG_PATH, base_name[:-4]+'.jpg')
-        if os.path.exists(jpg_file):
+        base_name = os.path.splitext(os.path.basename(xml_file))[0]
+        jpg_file = image_index.get(base_name)
+        if jpg_file:
             file_list.append(jpg_file)
 
     file_list = [''.join([x + '\n']) for x in file_list]
