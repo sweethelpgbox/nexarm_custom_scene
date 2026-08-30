@@ -39,11 +39,28 @@ def build_image_index(jpg_path):
 def generate_train_and_val():
     file_list = []
     image_index = build_image_index(JPG_PATH)
+    annotated_stems = set()
     for xml_file in glob.glob(str(os.path.join(XML_PATH,'*.xml'))):
         base_name = os.path.splitext(os.path.basename(xml_file))[0]
+        annotated_stems.add(base_name)
         jpg_file = image_index.get(base_name)
         if jpg_file:
             file_list.append(jpg_file)
+
+    # Negative/background images: present in JPEGImages/ but with no XML
+    # annotation at all. Included as valid "no object here" training
+    # examples (an empty label .txt is written for these in
+    # write_empty_labels_for_negatives) so the model actually learns what
+    # is NOT the target class, instead of only ever seeing frames that
+    # contain it -- without this, negative images placed in JPEGImages/
+    # were silently never used for training at all.
+    negative_count = 0
+    for stem, jpg_file in image_index.items():
+        if stem not in annotated_stems:
+            file_list.append(jpg_file)
+            negative_count += 1
+    if negative_count:
+        print(f'negative (background) images included: {negative_count}')
 
     file_list = [''.join([x + '\n']) for x in file_list]
 
@@ -106,6 +123,23 @@ def xml2txt(xml_path, jpg_path, class_names, class_count):
             pass
             #print(e, xml_file)
 
+def write_empty_labels_for_negatives(xml_path, jpg_path):
+    # YOLO training requires a label file (even an empty one) to exist for
+    # each image it trains on; a missing .txt makes a negative image get
+    # skipped rather than used as a "no object" example. Write one empty
+    # .txt per image that has no matching XML annotation.
+    image_index = build_image_index(jpg_path)
+    annotated_stems = {
+        os.path.splitext(os.path.basename(f))[0]
+        for f in glob.glob(str(os.path.join(xml_path, '*.xml')))
+    }
+    for stem in image_index:
+        if stem in annotated_stems:
+            continue
+        txt_file = os.path.join(jpg_path, stem + '.txt')
+        if not os.path.exists(txt_file):
+            open(txt_file, 'w').close()
+
 def create_yaml(path, data):
     file = open(path, 'w')
     yaml.dump(data, file)
@@ -129,9 +163,10 @@ if __name__ == '__main__':
         print('error1:', e)
         sys.exit(0)
     
-    try:   
+    try:
         class_names, class_count = get_labels(BASE_PATH)
         xml2txt(XML_PATH, JPG_PATH, class_names, class_count)
+        write_empty_labels_for_negatives(XML_PATH, JPG_PATH)
     except BaseException as e:
         print('error2:', e)
         sys.exit(0)
