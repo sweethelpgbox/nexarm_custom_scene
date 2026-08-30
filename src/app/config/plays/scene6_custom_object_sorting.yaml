@@ -1,0 +1,16 @@
+# scene_6 — custom_object_sorting
+#
+# Single YOLO class ("strawberry shortcake ice cream bar") picked up and
+# placed at one fixed zone. Recalibrate
+# `place_targets."strawberry shortcake ice cream bar"` for your physical
+# setup using the calibration GUI
+# (software/calibration/scene_place_custom.py) — the values below are
+# placeholders.
+play_id: custom_object_sorting
+place_policy:
+  min_place_z: 0.015
+place_targets:
+  strawberry shortcake ice cream bar:
+  - 0.15
+  - 0.15
+  - 0.02

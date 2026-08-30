@@ -39,6 +39,7 @@ setup(
             'lab_manager = app.lab_manager:main',
             'scene5_tcp_bridge = app.scene5_tcp_bridge:main',
             'scene5_peer_agent = app.scene5_peer_agent:main',
+            'custom_object_sorting = app.custom_object_sorting:main',
         ],
     },
 )
