@@ -8,26 +8,36 @@ from launch.actions import DeclareLaunchArgument, OpaqueFunction
 #
 # Launches the shared `example` YOLO detector (same node used by
 # waste_classification.launch.py) against the "strawberry shortcake ice
-# cream bar" class, plus the new custom_object_sorting behavior node. Swap
-# `model_name` for a real trained TensorRT engine at
-# src/example/example/yolo_detect/models/<model_name>.engine
-# (or models/v11/<model_name>.engine / models/26/<model_name>.engine if the
-# name contains "11"/"26", matching the existing model layout) before this
-# scene will actually detect anything.
+# cream bar" class, plus the new custom_object_sorting behavior node.
+#
+# IMPORTANT: this file's own launch argument names are namespaced
+# (scene6_*) rather than reusing waste_classification.launch.py's names
+# (model_name/conf/model_size/camera_topic). ROS 2 launch arguments are
+# global to the whole launch tree by name -- the *first*
+# DeclareLaunchArgument for a given name wins, and later re-declarations
+# of the same name elsewhere are silently ignored. Since
+# waste_classification.launch.py is one of start_app.launch.py's
+# always-on baseline includes (evaluated before any scene-specific
+# include), reusing its argument names here meant its defaults silently
+# won over ours for every one of them.
+#
+# Model format: this yolo_node.py loads OpenVINO model directories
+# (models/<name>_openvino_model/ or models/v11|26/<name>_openvino_model/
+# for names containing "11"/"26"), NOT TensorRT .engine files.
 
 
 def launch_setup(context):
-    camera_topic = LaunchConfiguration('camera_topic', default='/depth_cam/rgb/image_raw')
-    camera_topic_arg = DeclareLaunchArgument('camera_topic', default_value=camera_topic)
+    camera_topic = LaunchConfiguration('scene6_camera_topic', default='/depth_cam/rgb/image_raw')
+    camera_topic_arg = DeclareLaunchArgument('scene6_camera_topic', default_value=camera_topic)
 
-    model_name = LaunchConfiguration('model_name', default='strawberry_shortcake_ice_cream_bar').perform(context)
-    model_name_arg = DeclareLaunchArgument('model_name', default_value=model_name)
+    model_name = LaunchConfiguration('scene6_model_name', default='strawberry_shortcake_ice_cream_bar').perform(context)
+    model_name_arg = DeclareLaunchArgument('scene6_model_name', default_value=model_name)
 
-    conf = LaunchConfiguration('conf', default=0.6).perform(context)
-    conf_arg = DeclareLaunchArgument('conf', default_value=conf)
+    conf = LaunchConfiguration('scene6_conf', default=0.6).perform(context)
+    conf_arg = DeclareLaunchArgument('scene6_conf', default_value=conf)
 
-    model_size = LaunchConfiguration('model_size', default=320).perform(context)
-    model_size_arg = DeclareLaunchArgument('model_size', default_value=model_size)
+    model_size = LaunchConfiguration('scene6_model_size', default=320).perform(context)
+    model_size_arg = DeclareLaunchArgument('scene6_model_size', default_value=model_size)
 
     use_scene_pose = LaunchConfiguration('use_scene_pose', default='true')
     use_scene_pose_arg = DeclareLaunchArgument('use_scene_pose', default_value=use_scene_pose)
@@ -46,7 +56,6 @@ def launch_setup(context):
         parameters=[{
             'classes': ['strawberry shortcake ice cream bar'],
             'model': model_name,
-            'engine': model_name,
             'conf': conf,
             'task': 'detect',
             'display': False,
