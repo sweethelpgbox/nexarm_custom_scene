@@ -33,7 +33,7 @@ def launch_setup(context):
     model_name = LaunchConfiguration('scene6_model_name', default='strawberry_shortcake_ice_cream_bar').perform(context)
     model_name_arg = DeclareLaunchArgument('scene6_model_name', default_value=model_name)
 
-    conf = LaunchConfiguration('scene6_conf', default=0.6).perform(context)
+    conf = LaunchConfiguration('scene6_conf', default=0.8).perform(context)
     conf_arg = DeclareLaunchArgument('scene6_conf', default_value=conf)
 
     # Must match the imgsz used to train/export the model (yolo export
