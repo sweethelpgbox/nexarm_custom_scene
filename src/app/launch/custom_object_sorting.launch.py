@@ -34,9 +34,14 @@ def launch_setup(context):
     play_config_path = LaunchConfiguration('play_config_path', default='')
     play_config_path_arg = DeclareLaunchArgument('play_config_path', default_value=play_config_path)
 
+    # Explicit unique node name: the shared yolo_node executable defaults to
+    # node name 'yolo', which collides with waste_classification.launch.py's
+    # always-on yolo_node instance (see start_app.launch.py) -- without this,
+    # both instances fight over the same /yolo/... topics and services.
     yolo_node = Node(
         package='example',
         executable='yolo_node',
+        name='strawberry_shortcake_detect',
         output='screen',
         parameters=[{
             'classes': ['strawberry shortcake ice cream bar'],
@@ -47,6 +52,11 @@ def launch_setup(context):
             'display': False,
             'image_topic': camera_topic,
             'model_size': model_size,
+            # start_service/stop_service default to the absolute path
+            # '/yolo/start'/'/yolo/stop' regardless of node name -- must be
+            # overridden explicitly to avoid the same collision.
+            'start_service': '/strawberry_shortcake_detect/start',
+            'stop_service': '/strawberry_shortcake_detect/stop',
         }]
     )
 

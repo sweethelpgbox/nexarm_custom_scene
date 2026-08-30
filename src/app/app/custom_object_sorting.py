@@ -10,12 +10,13 @@ sees to one fixed place target defined in
 
 Modeled on the working scene_1/scene_3 pattern in ``app/waste_classification.py``:
 same camera calibration files (``src/app/config/transform.yaml``,
-``calibration.yaml``), same ``yolo/...`` detection topic/service names
-produced by ``example.yolo_detect.yolo_node`` (see
-``custom_object_sorting.launch.py``), and the shared pick()/place() motion
-helpers in ``app.utils.pick_and_place``. Trimmed to a single class and a
-single destination, so it skips the multi-target coordinator/heartbeat
-machinery the bigger multi-class nodes need.
+``calibration.yaml``), and the same ``example.yolo_detect.yolo_node``
+detector (see ``custom_object_sorting.launch.py``), just given its own
+node name/services (``DETECT_NODE_NAME``) so it doesn't collide with
+waste_classification's always-on ``yolo`` instance. Reuses the shared
+pick()/place() motion helpers in ``app.utils.pick_and_place``. Trimmed to
+a single class and a single destination, so it skips the multi-target
+coordinator/heartbeat machinery the bigger multi-class nodes need.
 """
 
 import os
@@ -39,6 +40,11 @@ from app.utils import pick_and_place
 
 SCENE_ID = 'scene_6'
 DETECT_CLASS = 'strawberry shortcake ice cream bar'
+# Must match custom_object_sorting.launch.py's yolo_node `name=` and
+# start_service/stop_service -- the shared yolo_node executable defaults to
+# node name 'yolo' and services '/yolo/start'|'/yolo/stop', which collide
+# with waste_classification.launch.py's always-on yolo_node instance.
+DETECT_NODE_NAME = 'strawberry_shortcake_detect'
 OBJECT_HEIGHT_M = 0.03
 PICK_PITCH_DEG = 80.0
 PICK_GRIPPER_ANGLE = 500
@@ -75,8 +81,10 @@ class CustomObjectSortingNode(Node):
         self.exit_srv = self.create_service(Trigger, '~/exit', self.exit_srv_callback)
 
         self.timer_cb_group = ReentrantCallbackGroup()
-        self.start_yolo_client = self.create_client(Trigger, 'yolo/start', callback_group=self.timer_cb_group)
-        self.stop_yolo_client = self.create_client(Trigger, 'yolo/stop', callback_group=self.timer_cb_group)
+        self.start_yolo_client = self.create_client(
+            Trigger, f'/{DETECT_NODE_NAME}/start', callback_group=self.timer_cb_group)
+        self.stop_yolo_client = self.create_client(
+            Trigger, f'/{DETECT_NODE_NAME}/stop', callback_group=self.timer_cb_group)
         self.controller_init_client = self.create_client(
             Trigger, '/controller_manager/init_finish', callback_group=self.timer_cb_group)
 
@@ -144,7 +152,7 @@ class CustomObjectSortingNode(Node):
             self.camera_info_sub = self.create_subscription(
                 CameraInfo, 'depth_cam/rgb/camera_info', self.camera_info_callback, 1)
             self.object_sub = self.create_subscription(
-                ObjectsInfo, 'yolo/object_detect', self.object_callback, 1)
+                ObjectsInfo, f'/{DETECT_NODE_NAME}/object_detect', self.object_callback, 1)
             self.enter = True
             threading.Thread(target=self.get_roi, daemon=True).start()
         self.send_request(self.start_yolo_client, Trigger.Request())
