@@ -36,7 +36,10 @@ def launch_setup(context):
     conf = LaunchConfiguration('scene6_conf', default=0.6).perform(context)
     conf_arg = DeclareLaunchArgument('scene6_conf', default_value=conf)
 
-    model_size = LaunchConfiguration('scene6_model_size', default=320).perform(context)
+    # Must match the imgsz used to train/export the model (yolo export
+    # ... imgsz=640) -- a mismatch here causes an OpenVINO input-tensor
+    # shape error at inference time, confirmed on hardware.
+    model_size = LaunchConfiguration('scene6_model_size', default=640).perform(context)
     model_size_arg = DeclareLaunchArgument('scene6_model_size', default_value=model_size)
 
     use_scene_pose = LaunchConfiguration('use_scene_pose', default='true')
