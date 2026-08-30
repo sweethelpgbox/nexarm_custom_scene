@@ -122,6 +122,7 @@ if __name__ == '__main__':
     XML_PATH = os.path.join(BASE_PATH, 'Annotations')
     JPG_PATH = os.path.join(BASE_PATH, 'JPEGImages')
     TXT_PATH = os.path.join(BASE_PATH, 'ImageSets')
+    os.makedirs(TXT_PATH, exist_ok=True)
     try:
         generate_train_and_val()
     except BaseException as e:
