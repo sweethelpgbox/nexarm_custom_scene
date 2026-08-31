@@ -119,7 +119,18 @@ MIN_DETECT_SCORE = 0.5
 # far).
 GRIP_WIDTH_TYPICAL_M = 0.025
 GRIP_ANGLE_TYPICAL = pick_and_place.pulse_to_claw(PICK_GRIPPER_ANGLE)
-GRIP_ANGLE_PER_METER = -800.0
+GRIP_ANGLE_PER_METER = -400.0
+# Clamp bounds for the computed angle. NOT pick_and_place.CLAW_GRAB
+# (10 deg) on the open end -- that sits only ~6 degrees below
+# GRIP_ANGLE_TYPICAL, so CONFIRMED ON HARDWARE any object noticeably
+# wider than GRIP_WIDTH_TYPICAL_M instantly saturated there with
+# almost no room to open further, which is why the claw still closed
+# too much on a real object that "is not that small". GRIP_ANGLE_FLOOR
+# gives wide objects real headroom to open further -- it's a rough
+# placeholder (a moderately-open grab angle, well short of full
+# release at CLAW_OPEN=-100.0), not measured. The close end still
+# uses CLAW_FULL_CLOSE as a hard safety ceiling.
+GRIP_ANGLE_FLOOR = -60.0
 # Sanity bounds on the estimated width -- outside this range the pixel
 # measurement is almost certainly a bad detection/geometry glitch
 # rather than a real object, so the caller falls back to
@@ -382,7 +393,15 @@ class CustomObjectSortingNode(Node):
             points = list(pc2.read_points(cloud, field_names=('x', 'y', 'z'), skip_nans=True, uvs=uvs))
             if not points:
                 return None
-            cam_points = np.array([[p[0], p[1], p[2]] for p in points], dtype=np.float64)
+            # CONFIRMED ON HARDWARE: positional p[0]/p[1]/p[2] indexing
+            # into the records read_points() returns raised "setting an
+            # array element with a sequence" -- multi-field indexing a
+            # structured numpy array (field_names=('x','y','z')) can
+            # return a view whose positional layout doesn't line up
+            # with simple scalar-per-index access. Named field access
+            # is unambiguous regardless of that view's internal layout.
+            cam_points = np.array(
+                [[float(p['x']), float(p['y']), float(p['z'])] for p in points], dtype=np.float64)
             cam_point = np.median(cam_points, axis=0).reshape(3, 1)
 
             invR = np.linalg.inv(self.raw_rmat)
@@ -458,11 +477,11 @@ class CustomObjectSortingNode(Node):
     def _claw_angle_for_width(width_m):
         """Linear interpolation around the one confirmed-working data
         point (GRIP_ANGLE_TYPICAL at GRIP_WIDTH_TYPICAL_M), clamped to
-        the claw's actual grab range so a bad width estimate can't
-        command an angle beyond what the claw can physically do."""
+        [GRIP_ANGLE_FLOOR, CLAW_FULL_CLOSE] so a bad width estimate
+        can't command an angle beyond what the claw can physically do."""
         delta = width_m - GRIP_WIDTH_TYPICAL_M
         angle = GRIP_ANGLE_TYPICAL + GRIP_ANGLE_PER_METER * delta
-        return max(pick_and_place.CLAW_GRAB, min(pick_and_place.CLAW_FULL_CLOSE, angle))
+        return max(GRIP_ANGLE_FLOOR, min(pick_and_place.CLAW_FULL_CLOSE, angle))
 
     @staticmethod
     def _position_yaw(position):
