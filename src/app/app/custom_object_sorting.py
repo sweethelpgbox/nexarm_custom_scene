@@ -26,6 +26,15 @@ working with a fixed height; the live-depth path below has not itself
 been validated against real hardware and its first live runs should be
 watched closely (logged heights compared to the object's actual height)
 before being trusted.
+
+Grip width: the claw's closing angle is also scaled per-detection from
+the object's estimated real-world width (``_estimate_object_width_m`` /
+``_claw_angle_for_width``), instead of always using the fixed
+``PICK_GRIPPER_ANGLE``. See those methods and the ``GRIP_*`` constants'
+comments -- the interpolation is anchored on the one confirmed-working
+data point (``PICK_GRIPPER_ANGLE``) but its endpoints are unvalidated
+placeholders; NOT yet confirmed on real hardware. Watch the logged
+"width=...-> claw_angle=..." line on the first live picks.
 """
 
 import os
@@ -80,6 +89,43 @@ PICK_GRIPPER_ANGLE = 500
 PICK_GRIPPER_DEPTH_M = 0.02
 DEFAULT_PLACE_TARGET = [0.15, 0.15, 0.02]
 MIN_DETECT_SCORE = 0.5
+
+# -- size-adaptive grip -------------------------------------------------
+# Close the claw to an angle scaled from the detected object's actual
+# real-world width (estimated from its bounding box, see
+# _estimate_object_width_m) instead of always using the fixed
+# PICK_GRIPPER_ANGLE/pulse_to_claw() angle regardless of size. Claw
+# angles here run CLAW_GRAB..CLAW_FULL_CLOSE (see
+# app.utils.pick_and_place) where a LARGER angle is MORE closed -- so a
+# narrower object needs a larger angle to actually reach it, a wider
+# one needs a smaller angle so the jaws stop as soon as they touch it
+# instead of over-closing on/crushing it.
+#
+# GRIP_WIDTH_TYPICAL_M and GRIP_ANGLE_PER_METER are PLACEHOLDERS.
+# GRIP_ANGLE_TYPICAL is derived from PICK_GRIPPER_ANGLE, the fixed
+# pulse value already confirmed on hardware to grip a real strawberry
+# shortcake ice cream bar -- so this reproduces today's proven behavior
+# for an object near GRIP_WIDTH_TYPICAL_M. GRIP_WIDTH_TYPICAL_M itself
+# is only an estimate (not a ruler measurement of the actual bar), and
+# GRIP_ANGLE_PER_METER (how many degrees to open/close per meter of
+# width difference from typical) is a rough guess, not measured.
+#
+# To calibrate: read the "estimated width" logged on real picks,
+# measure the bar with a ruler and set GRIP_WIDTH_TYPICAL_M to that,
+# then adjust GRIP_ANGLE_PER_METER by watching how the claw closes on
+# objects that are visibly narrower/wider than the bar (increase its
+# magnitude if the claw isn't reacting enough to a size difference,
+# decrease it if a slightly-off width estimate swings the angle too
+# far).
+GRIP_WIDTH_TYPICAL_M = 0.025
+GRIP_ANGLE_TYPICAL = pick_and_place.pulse_to_claw(PICK_GRIPPER_ANGLE)
+GRIP_ANGLE_PER_METER = -800.0
+# Sanity bounds on the estimated width -- outside this range the pixel
+# measurement is almost certainly a bad detection/geometry glitch
+# rather than a real object, so the caller falls back to
+# PICK_GRIPPER_ANGLE/pulse_to_claw() instead of trusting it.
+MIN_SANE_WIDTH_M = 0.005
+MAX_SANE_WIDTH_M = 0.10
 
 
 class CustomObjectSortingNode(Node):
@@ -325,6 +371,60 @@ class CustomObjectSortingNode(Node):
         return calibrated_pose.pixel_to_calibrated_world(
             pixel, self.intrinsic, extristric, self.white_area_center, calibration, height=height)
 
+    def _estimate_object_width_m(self, box, projection_matrix):
+        """Real-world width of the detected object, estimated from its
+        bounding box in pixels using the SAME calibrated pixel<->world
+        scale already used for its position: calculate_pixel_length maps
+        a known world length to the pixel distance it projects to at the
+        calibrated plane, so inverting that (pixels / pixels-per-meter)
+        gives meters -- the identical call already proven correct in
+        this codebase's waste_classification_stepper.py (used there to
+        size the gripper's own fixed jaw dimensions in pixels, not an
+        object's).
+
+        Uses the SHORTER of the box's pixel width/height as a proxy for
+        the object's actual grip width. The box is axis-aligned in the
+        image while the real object can be at any rotation, and yaw here
+        is the radial angle to the arm base, not the object's own
+        rotation -- this codebase doesn't otherwise reason about object
+        orientation for grasping -- so for an elongated object like the
+        ice cream bar, the box's short side is a much better proxy for
+        "how wide is the thing the claw closes across" than its long
+        side or an average of the two. Not exact for every rotation.
+
+        Returns None (caller falls back to PICK_GRIPPER_ANGLE) if the
+        camera isn't calibrated yet or the estimate lands outside
+        [MIN_SANE_WIDTH_M, MAX_SANE_WIDTH_M].
+        """
+        if self.intrinsic is None:
+            return None
+        x1, y1, x2, y2 = box
+        box_px = min(abs(x2 - x1), abs(y2 - y1))
+        try:
+            pixels_per_meter = common.calculate_pixel_length(1.0, self.intrinsic, projection_matrix)
+        except Exception as e:
+            self.get_logger().warn(f'width estimation failed, falling back to PICK_GRIPPER_ANGLE: {e}')
+            return None
+        if pixels_per_meter <= 0:
+            return None
+        width_m = box_px / pixels_per_meter
+        if not (MIN_SANE_WIDTH_M <= width_m <= MAX_SANE_WIDTH_M):
+            self.get_logger().warn(
+                f'estimated width {width_m:.4f} m outside sane range '
+                f'[{MIN_SANE_WIDTH_M}, {MAX_SANE_WIDTH_M}] -- falling back to PICK_GRIPPER_ANGLE')
+            return None
+        return width_m
+
+    @staticmethod
+    def _claw_angle_for_width(width_m):
+        """Linear interpolation around the one confirmed-working data
+        point (GRIP_ANGLE_TYPICAL at GRIP_WIDTH_TYPICAL_M), clamped to
+        the claw's actual grab range so a bad width estimate can't
+        command an angle beyond what the claw can physically do."""
+        delta = width_m - GRIP_WIDTH_TYPICAL_M
+        angle = GRIP_ANGLE_TYPICAL + GRIP_ANGLE_PER_METER * delta
+        return max(pick_and_place.CLAW_GRAB, min(pick_and_place.CLAW_FULL_CLOSE, angle))
+
     @staticmethod
     def _position_yaw(position):
         yaw = math.degrees(math.atan2(position[1], position[0]))
@@ -349,13 +449,14 @@ class CustomObjectSortingNode(Node):
             return
         x1, y1, x2, y2 = best.box
         center = ((x1 + x2) / 2.0, (y1 + y2) / 2.0)
+        box = (x1, y1, x2, y2)
         with self.lock:
             if self.busy:
                 return
             self.busy = True
-        threading.Thread(target=self._pick_and_place, args=(center,), daemon=True).start()
+        threading.Thread(target=self._pick_and_place, args=(center, box), daemon=True).start()
 
-    def _pick_and_place(self, pixel_center):
+    def _pick_and_place(self, pixel_center, box):
         try:
             self.send_request(self.stop_yolo_client, Trigger.Request())
 
@@ -363,23 +464,30 @@ class CustomObjectSortingNode(Node):
             height = real_height if real_height is not None else OBJECT_HEIGHT_M
             extristric = self._shifted_extristric(height)
 
-            position, _ = self.get_object_world_position(pixel_center, extristric, height)
+            position, projection_matrix = self.get_object_world_position(pixel_center, extristric, height)
             position = np.asarray(position, dtype=np.float64).tolist()
             calibration = common.get_yaml_data(os.path.join(self.config_path, self.calibration_file)) or {}
             position = calibrated_pose.apply_axis_calibration(position, calibration, 'kinematics').tolist()
             yaw = self._position_yaw(position)
 
+            width_m = self._estimate_object_width_m(box, projection_matrix)
+            claw_angle = self._claw_angle_for_width(width_m) if width_m is not None else None
+
             self.get_logger().info(
                 f'picking {DETECT_CLASS}: height={height:.4f} m '
                 f'({"measured" if real_height is not None else "OBJECT_HEIGHT_M fallback"}), '
-                f'position={position}')
+                f'position={position}, '
+                f'width={f"{width_m:.4f} m" if width_m is not None else "n/a"} -> '
+                f'claw_angle={f"{claw_angle:.1f}" if claw_angle is not None else "PICK_GRIPPER_ANGLE fallback"}')
 
             picked = pick_and_place.pick(
-                position, PICK_PITCH_DEG, yaw, PICK_GRIPPER_ANGLE, PICK_GRIPPER_DEPTH_M, self.arm_pub)
+                position, PICK_PITCH_DEG, yaw, PICK_GRIPPER_ANGLE, PICK_GRIPPER_DEPTH_M, self.arm_pub,
+                claw_grab_angle=claw_angle)
             if picked:
                 place_yaw = self._position_yaw(self.place_target)
                 pick_and_place.place(
-                    self.place_target, PICK_PITCH_DEG, place_yaw, PICK_GRIPPER_ANGLE, self.arm_pub)
+                    self.place_target, PICK_PITCH_DEG, place_yaw, PICK_GRIPPER_ANGLE, self.arm_pub,
+                    claw_hold_angle=claw_angle)
                 self.get_logger().info(f'placed {DETECT_CLASS} at {self.place_target}')
             else:
                 self.get_logger().warn(f'pick failed for {DETECT_CLASS} at {position}')
