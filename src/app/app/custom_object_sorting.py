@@ -73,7 +73,10 @@ DETECT_CLASS = 'strawberry shortcake ice cream bar'
 DETECT_NODE_NAME = 'strawberry_shortcake_detect'
 DEPTH_CLOUD_TOPIC = 'depth_cam/depth_registered/points'
 # Fallback used when live depth sampling is unavailable or looks invalid.
-OBJECT_HEIGHT_M = 0.03
+# Measured: the bar is ~2cm tall. (Was 0.03 -- an earlier guess that
+# CONFIRMED ON HARDWARE made the arm stop short of the object, since it
+# made the assumed "top of object" ~1cm higher than reality.)
+OBJECT_HEIGHT_M = 0.02
 # Sanity bounds on the live-measured height -- protects against a bad
 # depth reading (noise, a hole in the depth image, a units mistake)
 # commanding a wildly wrong -- and potentially unsafe -- arm position.
