@@ -41,6 +41,7 @@ import os
 import math
 import time
 import threading
+import traceback
 
 import numpy as np
 import rclpy
@@ -421,7 +422,13 @@ class CustomObjectSortingNode(Node):
                 return None
             return real_height
         except Exception as e:
-            self.get_logger().warn(f'depth sampling failed, falling back to OBJECT_HEIGHT_M: {e}')
+            # traceback.format_exc() so the NEXT bug in here (this
+            # class of exception has already been wrong once about
+            # where it actually happens) is diagnosable from the log
+            # instead of guessed at again.
+            self.get_logger().warn(
+                'depth sampling failed, falling back to OBJECT_HEIGHT_M: '
+                f'{e}\n{traceback.format_exc()}')
             return None
 
     def get_object_world_position(self, pixel, extristric, height):
