@@ -145,6 +145,12 @@ class CustomObjectSortingNode(Node):
 
         self.intrinsic = None
         self.distortion = None
+        # RGB image resolution, from the same CameraInfo message the
+        # intrinsic comes from -- needed to reconstruct 2D pixel indices
+        # when the depth cloud is published flattened (see
+        # _sample_real_height).
+        self.rgb_image_width = None
+        self.rgb_image_height = None
         # Raw (unshifted) extrinsic tvec/rmat from calibration -- the
         # per-detection code shifts this dynamically using the live
         # measured object height (see _shifted_extristric), rather than
@@ -273,6 +279,8 @@ class CustomObjectSortingNode(Node):
     def camera_info_callback(self, msg):
         self.intrinsic = np.matrix(msg.k).reshape(1, -1, 3)
         self.distortion = np.array(msg.d)
+        self.rgb_image_width = int(msg.width)
+        self.rgb_image_height = int(msg.height)
 
     def depth_cloud_callback(self, msg):
         with self.depth_cloud_lock:
@@ -308,9 +316,9 @@ class CustomObjectSortingNode(Node):
         """Best-effort real object height above the calibrated table
         plane, measured from the registered depth point cloud rather than
         assumed. Returns None (caller falls back to OBJECT_HEIGHT_M) if
-        depth data is unavailable, the cloud isn't organized, no valid
-        (non-NaN) points are found near the pixel, or the computed height
-        falls outside [MIN_SAFE_HEIGHT_M, MAX_SAFE_HEIGHT_M].
+        depth data is unavailable, no valid (non-NaN) points are found
+        near the pixel, or the computed height falls outside
+        [MIN_SAFE_HEIGHT_M, MAX_SAFE_HEIGHT_M].
 
         Math: back-project the sampled camera-frame 3D point through the
         *raw* (unshifted) calibration extrinsic the same way
@@ -320,26 +328,57 @@ class CustomObjectSortingNode(Node):
         tvec); world_point's Z component is the real height above the
         calibrated table.
 
-        This has not been validated against real hardware -- the logged
-        cam_point/height on each pick should be sanity-checked against
-        the object's real height before trusting it.
+        CONFIRMED ON HARDWARE: this driver publishes
+        depth_cam/depth_registered/points *flattened*
+        (PointCloud2.height == 1, width == total point count) even
+        though the points are still in the same raster order as the RGB
+        image (registered depth is reprojected into the RGB frame, so
+        it shares its resolution -- see rgb_image_width/height, captured
+        from the same CameraInfo message the intrinsic comes from).
+        PointCloud2's normal (u, v) addressing can't reach a specific
+        image row on a height==1 cloud (row_step spans the *entire*
+        flattened array, not one image row), so for that case we
+        reconstruct the flat array index ourselves (v * image_width + u)
+        and address points via pc2.read_points(..., uvs=[(flat_index,
+        0), ...]) -- valid because with height==1, row_step already
+        covers the whole array, so v=0 plus a "u" of our own flat index
+        lands on the right point.
         """
         if not HAS_POINT_CLOUD2 or not self.calibration_ready:
             return None
         with self.depth_cloud_lock:
             cloud = self.depth_cloud
-        if cloud is None or cloud.height <= 1:
+        if cloud is None:
             return None
         try:
-            u = max(0, min(cloud.width - 1, int(round(pixel_center[0]))))
-            v = max(0, min(cloud.height - 1, int(round(pixel_center[1]))))
-            uvs = [
-                (uu, vv)
-                for dv in range(-DEPTH_SAMPLE_WINDOW, DEPTH_SAMPLE_WINDOW + 1)
-                for du in range(-DEPTH_SAMPLE_WINDOW, DEPTH_SAMPLE_WINDOW + 1)
-                for uu, vv in [(u + du, v + dv)]
-                if 0 <= uu < cloud.width and 0 <= vv < cloud.height
-            ]
+            if cloud.height > 1:
+                # Genuinely organized cloud -- normal 2D (u, v) addressing.
+                u = max(0, min(cloud.width - 1, int(round(pixel_center[0]))))
+                v = max(0, min(cloud.height - 1, int(round(pixel_center[1]))))
+                uvs = [
+                    (uu, vv)
+                    for dv in range(-DEPTH_SAMPLE_WINDOW, DEPTH_SAMPLE_WINDOW + 1)
+                    for du in range(-DEPTH_SAMPLE_WINDOW, DEPTH_SAMPLE_WINDOW + 1)
+                    for uu, vv in [(u + du, v + dv)]
+                    if 0 <= uu < cloud.width and 0 <= vv < cloud.height
+                ]
+            else:
+                # Flattened cloud (see docstring) -- need the RGB
+                # resolution to reconstruct 2D indices; not available
+                # until the first CameraInfo message arrives.
+                image_width, image_height = self.rgb_image_width, self.rgb_image_height
+                if not image_width or not image_height:
+                    return None
+                u = max(0, min(image_width - 1, int(round(pixel_center[0]))))
+                v = max(0, min(image_height - 1, int(round(pixel_center[1]))))
+                uvs = []
+                for dv in range(-DEPTH_SAMPLE_WINDOW, DEPTH_SAMPLE_WINDOW + 1):
+                    for du in range(-DEPTH_SAMPLE_WINDOW, DEPTH_SAMPLE_WINDOW + 1):
+                        uu, vv = u + du, v + dv
+                        if 0 <= uu < image_width and 0 <= vv < image_height:
+                            flat_index = vv * image_width + uu
+                            if flat_index < cloud.width:
+                                uvs.append((flat_index, 0))
             points = list(pc2.read_points(cloud, field_names=('x', 'y', 'z'), skip_nans=True, uvs=uvs))
             if not points:
                 return None
